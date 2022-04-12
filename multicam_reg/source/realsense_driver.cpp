@@ -43,6 +43,7 @@ int SparkRealsense::setParam(std::string serial, int width, int height, int fps)
 int SparkRealsense::startStream(){
     switch (M_FRAME_MODE) {
     case 1:
+        // m_config.enable_device();
         m_config.enable_stream(RS2_STREAM_COLOR, m_width, m_height, RS2_FORMAT_RGB8, m_fps);
         m_config.enable_stream(RS2_STREAM_DEPTH, m_width, m_height, RS2_FORMAT_Z16, m_fps);
         m_pipeline.start(m_config); 
