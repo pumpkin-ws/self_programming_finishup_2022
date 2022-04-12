@@ -29,3 +29,13 @@ add_library(
 target_link_libraries(
     matrix_util PUBLIC ${OpenCV_LIBS}
 )
+
+add_library(
+    rs_driver SHARED
+    camera_base.hpp
+    realsense_driver.hpp
+    realsense_driver.cpp
+)
+target_link_libraries(
+    rs_driver PUBLIC realsense2 ${OpenCV_LIBS} ${PCL_LIBRARIES}
+)

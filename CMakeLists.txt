@@ -4,6 +4,8 @@ project(sp-finish VERSION 0.1.0)
 include(CTest)
 enable_testing()
 
+find_package(glog REQUIRED)
+
 link_directories(${PROJECT_SOURCE_DIR}/lib/)
 
 add_subdirectory(multicam_reg)
