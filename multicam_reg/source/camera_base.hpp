@@ -28,7 +28,7 @@ namespace spark_cameras {
         virtual int setParam(std::string serial, int width, int height, int fps) = 0;
         virtual int startStream() = 0;
         virtual int getPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_pc) = 0;
-        virtual int getRGBFrame(cv::Mat *cv_mat_ptr) = 0;
+        virtual int getRGBFrame(cv::Mat& output) = 0;
         virtual int storePCDFile(std::string filename) = 0;
         virtual int store2DImage(std::string filename) = 0;
         virtual int showPointcloud() = 0;

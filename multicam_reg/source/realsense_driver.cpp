@@ -43,12 +43,13 @@ int SparkRealsense::setParam(std::string serial, int width, int height, int fps)
 int SparkRealsense::startStream(){
     switch (M_FRAME_MODE) {
     case 1:
-        // m_config.enable_device();
+        m_config.enable_device(m_serial);
         m_config.enable_stream(RS2_STREAM_COLOR, m_width, m_height, RS2_FORMAT_RGB8, m_fps);
         m_config.enable_stream(RS2_STREAM_DEPTH, m_width, m_height, RS2_FORMAT_Z16, m_fps);
         m_pipeline.start(m_config); 
         break;
     case 2:
+        m_config.enable_device(m_serial);
         m_config.enable_stream(RS2_STREAM_COLOR, m_width, m_height, RS2_FORMAT_RGB8, m_fps);
         m_pipeline.start(m_config);
         break;
@@ -97,15 +98,7 @@ int SparkRealsense::getPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_pc)
     return 0;
 }
 
-int SparkRealsense::getRGBFrame(cv::Mat *cv_mat_ptr){
-    if (M_FRAME_MODE != 1 && M_FRAME_MODE != 2) {
-        printf("SPARK FAILED: Wrong frame_mode. Please choose frame_mode 1 or 2.\n");
-        return 1;
-    }
-    if (cv_mat_ptr == nullptr){
-        printf("SPARK FAILED: The input cv_mat_ptr is nullptr.\n");
-        return 1;
-    }
+int SparkRealsense::getRGBFrame(cv::Mat& output){
     m_frameset = m_pipeline.wait_for_frames();
     rs2::align align_to(RS2_STREAM_COLOR);
     m_frameset = align_to.process(m_frameset);
@@ -113,7 +106,7 @@ int SparkRealsense::getRGBFrame(cv::Mat *cv_mat_ptr){
 
     const int w = m_color_frame.as<rs2::video_frame>().get_width();
     const int h = m_color_frame.as<rs2::video_frame>().get_height();
-    *cv_mat_ptr = cv::Mat(cv::Size(w, h), CV_8UC3, 
+    output = cv::Mat(cv::Size(w, h), CV_8UC3, 
                           (void*)m_color_frame.get_data(), cv::Mat::AUTO_STEP);
     return 0;
 }
@@ -132,7 +125,7 @@ int SparkRealsense::storePCDFile(std::string filename){
 
 int SparkRealsense::store2DImage(std::string filename){
     cv::Mat cv_mat;
-    m_ret = getRGBFrame(&cv_mat);
+    m_ret = getRGBFrame(cv_mat);
     if (m_ret != 0) {
         printf("SPARK FAILED: function getRGBFrame failed.\n");
         return 1;
@@ -170,7 +163,7 @@ int SparkRealsense::showRGBLive(){
     printf("--press 'q'/'Q' to quit--\n");
     while(1){
         cv::Mat cv_mat;
-        m_ret = getRGBFrame(&cv_mat);
+        m_ret = getRGBFrame(cv_mat);
         if (m_ret != 0) {
             printf("SPARK FAILED: function getRGBFrame failed.\n");
             return 1;

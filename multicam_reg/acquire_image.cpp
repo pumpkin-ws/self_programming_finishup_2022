@@ -68,7 +68,14 @@ void storeImage() {
                 img_name.append(".jpg");
                 printf("Image file name: %s\n", img_name.c_str());
                 cv::Mat img = getCurrentImg();
+                cv::imwrite(img_name, img);
                 break;
+            }
+            case int('s') : {
+                cv::Mat img = getCurrentImg();
+                cv::imshow("the current image", img);
+                cv::waitKey(0);
+                cv::destroyWindow("the current image");
             }
             default: {
                 printf("The key pressed is %d\n", key.load(std::memory_order_seq_cst));
@@ -86,6 +93,7 @@ int main(int argc, char** argv) {
 
     std::thread detect_t(detectKey);
     std::thread store_t(storeImage);
+    std::thread stream_t(streamImg);
 
     if (detect_t.joinable()) {
         detect_t.join();
@@ -93,17 +101,28 @@ int main(int argc, char** argv) {
     if (store_t.joinable()) {
         store_t.join();
     }
+    if (stream_t.joinable()) {
+        stream_t.join();
+    }
     return EXIT_SUCCESS;
 }
 
 cv::Mat getCurrentImg() {
-
+    std::lock_guard<std::mutex> lk(cur_img.mtx);
+    return cur_img.img.clone();
 }
 
 void streamImg() {
+    spark_cameras::SparkRealsense rs;
+    rs.setParam("109622074093", 1280, 720, 30);
+    rs.startStream();
     while(key.load(std::memory_order_seq_cst) != 27) {
         std::lock_guard<std::mutex> lk(cur_img.mtx);
-        
+        cv::Mat frame;
+        rs.getRGBFrame(frame);
+        cur_img.img = frame.clone();
+        cv::imshow("current frame", frame);
+        cv::waitKey(50);
     }
 }
 

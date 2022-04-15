@@ -21,7 +21,7 @@ namespace spark_cameras {
         int setParam(std::string serial, int width, int height, int fps) override;
         int startStream() override;
         int getPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_pc) override;
-        int getRGBFrame(cv::Mat *cv_mat_ptr) override;
+        int getRGBFrame(cv::Mat &output) override;
         int storePCDFile(std::string filename) override;
         int store2DImage(std::string filename) override;
         int showPointcloud() override;
