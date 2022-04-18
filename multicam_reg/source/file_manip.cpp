@@ -43,3 +43,13 @@ bool checkDirectoryExists(std::string dir_name) {
     boost::filesystem::path p(dir_name);
     return boost::filesystem::exists(p);
 }
+
+bool createDirectory(std::string path) {
+    boost::filesystem::path p(path);
+    if (boost::filesystem::exists(p)) {
+        return true;
+    } else {
+        bool create_result = boost::filesystem::create_directory(p);
+        return create_result;
+    }
+}

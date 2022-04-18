@@ -15,7 +15,6 @@ SparkRealsense::SparkRealsense(int frame_mode):
     };
 
 SparkRealsense::~SparkRealsense(){
-    printf("SPARK Realsense: Delete a SparkRealsense object.\n");
 }
 
 int SparkRealsense::init(){
@@ -106,8 +105,54 @@ int SparkRealsense::getRGBFrame(cv::Mat& output){
 
     const int w = m_color_frame.as<rs2::video_frame>().get_width();
     const int h = m_color_frame.as<rs2::video_frame>().get_height();
+    
     output = cv::Mat(cv::Size(w, h), CV_8UC3, 
                           (void*)m_color_frame.get_data(), cv::Mat::AUTO_STEP);
+    cv::cvtColor(output, output, cv::COLOR_RGB2BGR);
+    return 0;
+}
+
+int SparkRealsense::getData(cv::Mat &output, pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_pc) {
+    if ( M_FRAME_MODE != 1 ) {
+        printf("SPARK FAILED: Wrong frame_mode. Please choose frame_mode 1.\n");
+        return 1;
+    }
+    // get rs_points
+    m_frameset = m_pipeline.wait_for_frames();
+    rs2::align align_to(RS2_STREAM_COLOR);
+    m_frameset = align_to.process(m_frameset);
+    m_color_frame = m_frameset.get_color_frame();
+    m_depth_frame = m_frameset.get_depth_frame();
+    m_rs_pc.map_to(m_color_frame);
+    rs2::points rs_points;
+    rs_points = m_rs_pc.calculate(m_depth_frame);
+
+    //convert rs_points to pcl-point-cloud
+    auto video_sp = rs_points.get_profile().as<rs2::video_stream_profile>();
+    pcl_pc = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl_pc->width = static_cast<uint32_t>(video_sp.width());
+	pcl_pc->height = static_cast<uint32_t>(video_sp.height());
+	pcl_pc->is_dense = false;
+	pcl_pc->resize(rs_points.size());
+    auto vertices = rs_points.get_vertices();
+	auto textures = rs_points.get_texture_coordinates();
+
+	for (int i = 0; i < rs_points.size(); i++){
+		auto rgb_value = getTexColor(m_color_frame, textures[i]);
+		pcl_pc->points[i].x = vertices[i].x;
+		pcl_pc->points[i].y = vertices[i].y;
+		pcl_pc->points[i].z = vertices[i].z;
+		pcl_pc->points[i].r = (std::get<2>(rgb_value));
+		pcl_pc->points[i].g = (std::get<1>(rgb_value));
+		pcl_pc->points[i].b = (std::get<0>(rgb_value));
+	}
+
+    const int w = m_color_frame.as<rs2::video_frame>().get_width();
+    const int h = m_color_frame.as<rs2::video_frame>().get_height();
+    
+    output = cv::Mat(cv::Size(w, h), CV_8UC3, 
+                          (void*)m_color_frame.get_data(), cv::Mat::AUTO_STEP);
+    cv::cvtColor(output, output, cv::COLOR_RGB2BGR);
     return 0;
 }
 

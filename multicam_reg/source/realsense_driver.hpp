@@ -31,6 +31,7 @@ namespace spark_cameras {
         static std::tuple<uint8_t, uint8_t, uint8_t> getTexColor(
             rs2::video_frame texture, 
             rs2::texture_coordinate tex_coords);
+        int getData(cv::Mat &output, pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_pc);
 
     private:
         const int M_FRAME_MODE; // uninitialized private constant object, can only be initialized once

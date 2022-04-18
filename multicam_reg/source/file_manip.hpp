@@ -12,5 +12,7 @@
 bool checkTailValid(std::string tail);
 std::vector<std::string> getAllFileName(std::string path, std::string tail);
 bool checkDirectoryExists(std::string dir_name);
+bool createDirectory(std::string path);
+
 
 #endif
