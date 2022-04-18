@@ -112,9 +112,16 @@ void streamImg() {
             rs1.getData(frame_cam1, cloud_cam1);
         };
         auto get_cloud2 = [&rs2, &cloud_cam2, &frame_cam2](){
-            rs1.getData(frame_cam1, cloud_cam1);
+            rs2.getData(frame_cam2, cloud_cam2);
         };
         std::thread t_get_cloud1(get_cloud1);
+        std::thread t_get_cloud2(get_cloud2);
+        if (t_get_cloud1.joinable()) {
+            t_get_cloud1.join();
+        }
+        if (t_get_cloud2.joinable()) {
+            t_get_cloud2.join();
+        }
         
         rs1.getData(frame_cam1, cloud_cam1);
         rs2.getData(frame_cam2, cloud_cam2);
