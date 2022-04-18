@@ -1,1 +1,4 @@
 This project includes the test cases for closing projects on self programming robots.
+
+2022-4-19
+I can try to speed up acquistion of point cloud by using multiple threads, and use the promise-future mechanism.

@@ -4,6 +4,8 @@
 #include <opencv2/opencv.hpp>
 #include <termio.h>
 #include <atomic>
+#include <future>
+
 #include "source/file_manip.hpp"
 #include "source/realsense_driver.hpp"
 #include "source/calib_intrinsics.hpp"
@@ -106,6 +108,14 @@ void streamImg() {
         std::lock_guard<std::mutex> lk (combined_data.mtx);
         cloud::Ptr cloud_cam1(new cloud());
         cloud::Ptr cloud_cam2(new cloud());
+        auto get_cloud1 = [&rs1, &cloud_cam1, &frame_cam1](){
+            rs1.getData(frame_cam1, cloud_cam1);
+        };
+        auto get_cloud2 = [&rs2, &cloud_cam2, &frame_cam2](){
+            rs1.getData(frame_cam1, cloud_cam1);
+        };
+        std::thread t_get_cloud1(get_cloud1);
+        
         rs1.getData(frame_cam1, cloud_cam1);
         rs2.getData(frame_cam2, cloud_cam2);
         combined_data.img_cam1 = frame_cam1;
