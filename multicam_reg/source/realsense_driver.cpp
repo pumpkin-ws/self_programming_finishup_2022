@@ -129,11 +129,10 @@ int SparkRealsense::getData(cv::Mat &output, pcl::PointCloud<pcl::PointXYZRGB>::
 
     //convert rs_points to pcl-point-cloud
     auto video_sp = rs_points.get_profile().as<rs2::video_stream_profile>();
-    pcl_pc = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
     pcl_pc->width = static_cast<uint32_t>(video_sp.width());
 	pcl_pc->height = static_cast<uint32_t>(video_sp.height());
 	pcl_pc->is_dense = false;
-	pcl_pc->resize(rs_points.size());
+	pcl_pc->points.resize(rs_points.size());
     auto vertices = rs_points.get_vertices();
 	auto textures = rs_points.get_texture_coordinates();
 
