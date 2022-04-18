@@ -16,7 +16,6 @@ bool checkTailValid(std::string tail) {
 
 std::vector<std::string> getAllFileName(std::string path, std::string tail) {
     std::vector<std::string> fileNames;
-    // TODO : needs to first check if path exists!
     // check valid extend name
     if(checkTailValid(tail) == false){
         return fileNames;
