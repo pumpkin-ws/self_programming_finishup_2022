@@ -21,3 +21,8 @@ target_link_libraries(acquire_img ${OpenCV_LIBS} pthread rs_driver ${Boost_LIBRA
 
 add_executable(multicam_calib multicam_calib.cpp)
 target_link_libraries(multicam_calib PUBLIC ${OpenCV_LIBS} pthread rs_driver ${Boost_LIBRARIES} calib_intrinsic file_manip)
+
+find_package(Eigen3 REQUIRED)
+add_executable(eigen-test eigen-test.cpp)
+target_include_directories(eigen-test PUBLIC ${EIGEN3_INCLUDE_DIRS})
+

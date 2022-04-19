@@ -12,6 +12,7 @@
 #include "pcl/point_cloud.h"
 #include "pcl/point_types.h"
 #include "pcl/visualization/pcl_visualizer.h"
+#include "pcl/common/transforms.h"
 
 typedef pcl::PointCloud<pcl::PointXYZRGB> cloud;
 
@@ -102,7 +103,6 @@ void streamImg() {
     printf("Camera stream 2 started successfully.\n");
     
     cv::Mat frame_cam1, frame_cam2;
-    
 
     auto getFrame = [&frame_cam1, &frame_cam2, &rs1, &rs2](){
         std::lock_guard<std::mutex> lk (combined_data.mtx);
@@ -122,9 +122,6 @@ void streamImg() {
         if (t_get_cloud2.joinable()) {
             t_get_cloud2.join();
         }
-        
-        rs1.getData(frame_cam1, cloud_cam1);
-        rs2.getData(frame_cam2, cloud_cam2);
         combined_data.img_cam1 = frame_cam1;
         combined_data.img_cam2 = frame_cam2;
         combined_data.cloud_cam1 = cloud_cam1;
@@ -205,6 +202,29 @@ void utils() {
                 std::cout << cloud_cam1->size() << std::endl;
                 std::cout << cloud_cam2->size() << std::endl;
                 viewer.spin();
+
+                auto homoMat2Eigen = [](const cv::Mat& input, Eigen::Matrix4d& output) {
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 0; j < 4; j++) {
+                            output.row(i)(j) = input.at<double>(i, j);
+                        }
+                    }
+                };
+
+                Eigen::Matrix4d T_d2c_cam1, T_c2d_cam1, T_d2c_cam2, T_cam1_obj, T_obj_cam2;
+                homoMat2Eigen(d2c_cam1, T_d2c_cam1);
+                homoMat2Eigen(d2c_cam2, T_d2c_cam2);
+                homoMat2Eigen(cam1InObj, T_cam1_obj);
+                homoMat2Eigen(objInCam2, T_obj_cam2);
+                
+                T_c2d_cam1 = T_d2c_cam1.inverse();
+                
+                /* Transformation from depth camera 2 to depth camera 1 */
+                Eigen::Matrix4d T_dcam2_dcam1 = T_c2d_cam1 * T_cam1_obj * T_obj_cam2 * T_d2c_cam2;
+                T_dcam2_dcam1.cast<Eigen::Matrix4f>();
+
+                cloud::Ptr output_cam2 (new cloud());
+                pcl::transformPointCloud(*cloud_cam2, *output_cam2, T_dcam2_dcam1.cast<float>());
                 
                 break;
             }
