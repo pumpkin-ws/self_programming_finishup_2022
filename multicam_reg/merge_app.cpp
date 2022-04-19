@@ -16,12 +16,6 @@
 
 typedef pcl::PointCloud<pcl::PointXYZRGB> cloud;
 
-struct CurrentImg {
-    std::mutex mtx;
-    cv::Mat img_cam1;
-    cv::Mat img_cam2;
-} cur_img;
-
 struct CombinedData {
     std::mutex mtx;
     cv::Mat img_cam1;
@@ -176,8 +170,6 @@ void utils() {
                 std::string cam2_param = cam2_folder + "/CamInObject.yml";
                 cv::FileStorage fsw_cam1(cam1_param, cv::FileStorage::READ);
                 cv::FileStorage fsw_cam2(cam2_param, cv::FileStorage::READ);
-                std::cout << cam1_param << std::endl;
-                std::cout << cam2_param << std::endl;
                 cv::Mat d2c_cam1, d2c_cam2, objInCam1, objInCam2, cam1InObj, cam2InObj;
                 fsw_cam1["D2C"] >> d2c_cam1;
                 fsw_cam2["D2C"] >> d2c_cam2;
