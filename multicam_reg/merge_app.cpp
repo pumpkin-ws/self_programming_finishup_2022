@@ -13,6 +13,8 @@
 #include "pcl/point_types.h"
 #include "pcl/visualization/pcl_visualizer.h"
 #include "pcl/common/transforms.h"
+#include "pcl/filters/passthrough.h"
+
 
 typedef pcl::PointCloud<pcl::PointXYZRGB> cloud;
 
@@ -173,12 +175,17 @@ void utils() {
                 std::cout << std::boolalpha << fsw_cam1.isOpened() << std::endl;
                 std::cout << std::boolalpha << fsw_cam2.isOpened() << std::endl;
                 cv::Mat d2c_cam1, d2c_cam2, objInCam1, objInCam2, cam1InObj, cam2InObj;
-                fsw_cam1["D2C"] >> d2c_cam1;
-                fsw_cam2["D2C"] >> d2c_cam2;
+                // fsw_cam1["D2C"] >> d2c_cam1;
+                // fsw_cam2["D2C"] >> d2c_cam2;
                 fsw_cam1["ObjectInCam"] >> objInCam1;
                 fsw_cam2["ObjectInCam"] >> objInCam2;
                 fsw_cam1["CamInObject"] >> cam1InObj;
                 fsw_cam2["CamInObject"] >> cam2InObj;
+                std::cout << "object in cam1 is " << std::endl;
+                std::cout << objInCam1 << std::endl;
+                std::cout << "object in cam2 is " << std::endl;
+                std::cout << objInCam2 << std::endl;
+
 
                 cloud::Ptr cloud_cam1 (new cloud()), cloud_cam2 (new cloud());
                 cv::Mat img_cam1, img_cam2;
@@ -194,22 +201,25 @@ void utils() {
                 };
 
                 Eigen::Matrix4d T_d2c_cam1, T_c2d_cam1, T_d2c_cam2, T_cam1_obj, T_obj_cam2;
-                homoMat2Eigen(d2c_cam1, T_d2c_cam1);
-                homoMat2Eigen(d2c_cam2, T_d2c_cam2);
+                // homoMat2Eigen(d2c_cam1, T_d2c_cam1);
+                // homoMat2Eigen(d2c_cam2, T_d2c_cam2);
                 homoMat2Eigen(cam1InObj, T_cam1_obj);
                 homoMat2Eigen(objInCam2, T_obj_cam2);
                 
-                T_c2d_cam1 = T_d2c_cam1.inverse();
+                // T_c2d_cam1 = T_d2c_cam1.inverse();
                 
+                pcl::PassThrough<pcl::PointXYZRGB> ps;
+                
+
                 /* Transformation from depth camera 2 to depth camera 1 */
-                Eigen::Matrix4d T_dcam2_dcam1 = T_c2d_cam1 * T_cam1_obj * T_obj_cam2 * T_d2c_cam2;
+                Eigen::Matrix4d T_dcam2_dcam1 = T_cam1_obj * T_obj_cam2;
 
                 cloud::Ptr output_cam2 (new cloud());
                 pcl::transformPointCloud(*cloud_cam2, *output_cam2, T_dcam2_dcam1.cast<float>());
 
-                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud1_color(cloud_cam1, 255, 0, 0);
-                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud2_color(cloud_cam2, 0, 0, 255);
-                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> output_color(output_cam2, 0, 0, 255);
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud1_color(cloud_cam1, 255, 0, 0); // RED
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud2_color(cloud_cam2, 0, 0, 255); // BLUE
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> output_color(output_cam2, 0, 255, 0); // GREEN
                 viewer.addPointCloud(cloud_cam1, cloud1_color, "cam1");
                 viewer.addPointCloud(cloud_cam2, cloud2_color, "cam2");
                 viewer.addPointCloud(output_cam2, output_color, "cam2_output");
