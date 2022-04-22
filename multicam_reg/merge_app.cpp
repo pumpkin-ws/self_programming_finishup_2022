@@ -162,7 +162,8 @@ void utils() {
         switch(key.load(std::memory_order_seq_cst)) {
             /* Merge view for a single frame */
             case int('s'): {
-                printf("Merge point clouds from a single frame.\n");
+                printf(": Merge point clouds from a single frame.\n");
+                printf("Press q to exit.\n");
                 std::string cam1_param = cam1_folder + "/CamInObject.yml";
                 std::string cam2_param = cam2_folder + "/CamInObject.yml";
                 cv::FileStorage fsw_cam1(cam1_param, cv::FileStorage::READ);
@@ -219,11 +220,13 @@ void utils() {
                     key_set.store(false, std::memory_order_seq_cst);
                     cv_keypress.notify_one();
                 }
+                printf(": Exiting from display loop.\n");
                 break;
             }
             /* merge views in real time */
             case int('r'): {
                 printf(" : Merging views in real time.\n");
+                printf("Press q to exit.\n");
                 std::string cam1_param = cam1_folder + "/CamInObject.yml";
                 std::string cam2_param = cam2_folder + "/CamInObject.yml";
                 cv::FileStorage fsw_cam1(cam1_param, cv::FileStorage::READ);
@@ -236,24 +239,24 @@ void utils() {
                 fsw_cam1["CamInObject"] >> cam1InObj;
                 fsw_cam2["CamInObject"] >> cam2InObj;
 
-                // auto homoMat2Eigen = [](const cv::Mat& input, Eigen::Matrix4d& output) {
-                //     for (int i = 0; i < 4; i++) {
-                //         for (int j = 0; j < 4; j++) {
-                //             output.row(i)(j) = input.at<double>(i, j);
-                //         }
-                //     }
-                // };
+                auto homoMat2Eigen = [](const cv::Mat& input, Eigen::Matrix4d& output) {
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 0; j < 4; j++) {
+                            output.row(i)(j) = input.at<double>(i, j);
+                        }
+                    }
+                };
 
                 Eigen::Matrix4d T_d2c_cam1, T_c2d_cam1, T_d2c_cam2, T_cam1_obj, T_obj_cam2;
-                // homoMat2Eigen(d2c_cam1, T_d2c_cam1);
-                // homoMat2Eigen(d2c_cam2, T_d2c_cam2);
-                // homoMat2Eigen(cam1InObj, T_cam1_obj);
-                // homoMat2Eigen(objInCam2, T_obj_cam2);
+                homoMat2Eigen(d2c_cam1, T_d2c_cam1);
+                homoMat2Eigen(d2c_cam2, T_d2c_cam2);
+                homoMat2Eigen(cam1InObj, T_cam1_obj);
+                homoMat2Eigen(objInCam2, T_obj_cam2);
 
                 T_c2d_cam1 = T_d2c_cam1.inverse();
 
                 /* Transformation from depth camera 2 to depth camera 1 */
-                // Eigen::Matrix4d T_dcam2_dcam1 = T_c2d_cam1 * T_cam1_obj * T_obj_cam2 * T_d2c_cam2;
+                Eigen::Matrix4d T_dcam2_dcam1 = T_c2d_cam1 * T_cam1_obj * T_obj_cam2 * T_d2c_cam2;
                 
                 cloud::Ptr cloud_cam1 (new cloud()), cloud_cam2 (new cloud()), output_cam2 (new cloud());
                 pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud1_color(cloud_cam1, 255, 0, 0);
@@ -276,6 +279,7 @@ void utils() {
                     key_set.store(false, std::memory_order_seq_cst);
                     cv_keypress.notify_one();
                 }
+                printf(": Exiting from display loop.\n");
                 break;
             }
             case int('h'): {
@@ -283,12 +287,6 @@ void utils() {
                 help();
                 break;
             }
-
-            case int('q'): {
-                viewer.close();
-                break;
-            }
-
             default: {
                 printf(" : The key pressed is %d\n", uchar(key.load(std::memory_order_seq_cst)));
                 help();
