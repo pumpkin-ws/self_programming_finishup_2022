@@ -113,17 +113,16 @@ int SparkRealsense::getRGBFrame(cv::Mat& output){
 }
 
 int SparkRealsense::getData(cv::Mat &output, pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_pc) {
+    auto start_total = std::chrono::steady_clock::now();
     if ( M_FRAME_MODE != 1 ) {
         printf("SPARK FAILED: Wrong frame_mode. Please choose frame_mode 1.\n");
         return 1;
     }
     // get rs_points
     m_frameset = m_pipeline.wait_for_frames();
-    rs2::align align_to(RS2_STREAM_COLOR);
-    m_frameset = align_to.process(m_frameset);
     m_color_frame = m_frameset.get_color_frame();
     m_depth_frame = m_frameset.get_depth_frame();
-    m_rs_pc.map_to(m_color_frame);
+    
     rs2::points rs_points;
     rs_points = m_rs_pc.calculate(m_depth_frame);
 
@@ -136,15 +135,37 @@ int SparkRealsense::getData(cv::Mat &output, pcl::PointCloud<pcl::PointXYZRGB>::
     auto vertices = rs_points.get_vertices();
 	auto textures = rs_points.get_texture_coordinates();
 
-	for (int i = 0; i < rs_points.size(); i++){
-		auto rgb_value = getTexColor(m_color_frame, textures[i]);
-		pcl_pc->points[i].x = vertices[i].x;
-		pcl_pc->points[i].y = vertices[i].y;
-		pcl_pc->points[i].z = vertices[i].z;
-		pcl_pc->points[i].r = (std::get<2>(rgb_value));
-		pcl_pc->points[i].g = (std::get<1>(rgb_value));
-		pcl_pc->points[i].b = (std::get<0>(rgb_value));
-	}
+    // TODO: change point storage to multithread
+    auto assignPoints = [&pcl_pc, this, &textures, &vertices](uint head, uint tail){
+        for (int i = head; i < tail; i++) {
+            auto rgb_value = getTexColor(m_color_frame, textures[i]);
+            pcl_pc->points[i].x = vertices[i].x;
+            pcl_pc->points[i].y = vertices[i].y;
+            pcl_pc->points[i].z = vertices[i].z;
+            pcl_pc->points[i].r = (std::get<2>(rgb_value));
+            pcl_pc->points[i].g = (std::get<1>(rgb_value));
+            pcl_pc->points[i].b = (std::get<0>(rgb_value));
+        }
+    };
+
+    /* Divide assign work to different threads  */
+    
+    int chunk_number = 20; // will start 8 threads to assign point clouds
+    int chunk_size = int(rs_points.size()) / chunk_number;
+    std::vector<std::thread> assign_threads;
+    for (int i = 0; i < chunk_number; i++) {
+        if (i < chunk_number - 1) {
+            assign_threads.emplace_back(std::thread(assignPoints, i*chunk_size, (i+1)*chunk_size));
+        } else {
+            assign_threads.emplace_back(std::thread(assignPoints, i*chunk_size, rs_points.size()));
+        }
+    }
+
+    for (int i = 0; i < chunk_number; i++) {
+        if (assign_threads[i].joinable()) {
+            assign_threads[i].join();
+        }
+    }
 
     const int w = m_color_frame.as<rs2::video_frame>().get_width();
     const int h = m_color_frame.as<rs2::video_frame>().get_height();
@@ -152,6 +173,7 @@ int SparkRealsense::getData(cv::Mat &output, pcl::PointCloud<pcl::PointXYZRGB>::
     output = cv::Mat(cv::Size(w, h), CV_8UC3, 
                           (void*)m_color_frame.get_data(), cv::Mat::AUTO_STEP);
     cv::cvtColor(output, output, cv::COLOR_RGB2BGR);
+    auto end_total = std::chrono::steady_clock::now();
     return 0;
 }
 

@@ -37,5 +37,5 @@ add_library(
     realsense_driver.cpp
 )
 target_link_libraries(
-    rs_driver PUBLIC realsense2 ${OpenCV_LIBS} ${PCL_LIBRARIES}
+    rs_driver PUBLIC realsense2 ${OpenCV_LIBS} ${PCL_LIBRARIES} pthread
 )

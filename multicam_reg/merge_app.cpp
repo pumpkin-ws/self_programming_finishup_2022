@@ -78,10 +78,6 @@ void getCurrent(cv::Mat &frame_cam1, cv::Mat &frame_cam2, cloud::Ptr cloud_cam1,
 
     cloud_cam1->points = combined_data.cloud_cam1->points;
     cloud_cam2->points = combined_data.cloud_cam2->points;
-    std::cout << cloud_cam1->size() << std::endl;
-    std::cout << cloud_cam2->size() << std::endl;
-    std::cout << combined_data.cloud_cam1->size() << std::endl;
-    std::cout << combined_data.cloud_cam2->size() << std::endl;
     return;
 }
 
@@ -116,8 +112,8 @@ void streamImg() {
         if (t_get_cloud2.joinable()) {
             t_get_cloud2.join();
         }
-        combined_data.img_cam1 = frame_cam1;
-        combined_data.img_cam2 = frame_cam2;
+        combined_data.img_cam1 = frame_cam1.clone();
+        combined_data.img_cam2 = frame_cam2.clone();
         combined_data.cloud_cam1 = cloud_cam1;
         combined_data.cloud_cam2 = cloud_cam2;
     };
@@ -166,10 +162,15 @@ void utils() {
         switch(key.load(std::memory_order_seq_cst)) {
             /* Merge view for a single frame */
             case int('s'): {
+                printf("Merge point clouds from a single frame.\n");
                 std::string cam1_param = cam1_folder + "/CamInObject.yml";
                 std::string cam2_param = cam2_folder + "/CamInObject.yml";
                 cv::FileStorage fsw_cam1(cam1_param, cv::FileStorage::READ);
                 cv::FileStorage fsw_cam2(cam2_param, cv::FileStorage::READ);
+                std::cout << cam1_param << std::endl;
+                std::cout << cam2_param << std::endl;
+                std::cout << std::boolalpha << fsw_cam1.isOpened() << std::endl;
+                std::cout << std::boolalpha << fsw_cam2.isOpened() << std::endl;
                 cv::Mat d2c_cam1, d2c_cam2, objInCam1, objInCam2, cam1InObj, cam2InObj;
                 fsw_cam1["D2C"] >> d2c_cam1;
                 fsw_cam2["D2C"] >> d2c_cam2;
@@ -178,22 +179,10 @@ void utils() {
                 fsw_cam1["CamInObject"] >> cam1InObj;
                 fsw_cam2["CamInObject"] >> cam2InObj;
 
-                printf("d2c cam1 \n");
-                std::cout << d2c_cam1 << std::endl;
-                printf("d2c cam2 \n");
-                std::cout << d2c_cam2 << std::endl;
-
                 cloud::Ptr cloud_cam1 (new cloud()), cloud_cam2 (new cloud());
                 cv::Mat img_cam1, img_cam2;
 
                 getCurrent(img_cam1, img_cam2, cloud_cam1, cloud_cam2);
-                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud1_color(cloud_cam1, 255, 0, 0);
-                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud2_color(cloud_cam2, 0, 0, 255);
-                viewer.addPointCloud(cloud_cam1, cloud1_color, "cam1");
-                viewer.addPointCloud(cloud_cam2, cloud2_color, "cam2");
-                std::cout << cloud_cam1->size() << std::endl;
-                std::cout << cloud_cam2->size() << std::endl;
-                viewer.spin();
 
                 auto homoMat2Eigen = [](const cv::Mat& input, Eigen::Matrix4d& output) {
                     for (int i = 0; i < 4; i++) {
@@ -213,18 +202,84 @@ void utils() {
                 
                 /* Transformation from depth camera 2 to depth camera 1 */
                 Eigen::Matrix4d T_dcam2_dcam1 = T_c2d_cam1 * T_cam1_obj * T_obj_cam2 * T_d2c_cam2;
-                T_dcam2_dcam1.cast<Eigen::Matrix4f>();
 
                 cloud::Ptr output_cam2 (new cloud());
                 pcl::transformPointCloud(*cloud_cam2, *output_cam2, T_dcam2_dcam1.cast<float>());
-                
+
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud1_color(cloud_cam1, 255, 0, 0);
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud2_color(cloud_cam2, 0, 0, 255);
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> output_color(output_cam2, 0, 0, 255);
+                viewer.addPointCloud(cloud_cam1, cloud1_color, "cam1");
+                viewer.addPointCloud(cloud_cam2, cloud2_color, "cam2");
+                viewer.addPointCloud(output_cam2, output_color, "cam2_output");
+
+                lk.unlock();
+                while(key.load(std::memory_order_seq_cst) != int('q')) {
+                    viewer.spinOnce();
+                    key_set.store(false, std::memory_order_seq_cst);
+                    cv_keypress.notify_one();
+                }
                 break;
             }
             /* merge views in real time */
             case int('r'): {
+                printf(" : Merging views in real time.\n");
+                std::string cam1_param = cam1_folder + "/CamInObject.yml";
+                std::string cam2_param = cam2_folder + "/CamInObject.yml";
+                cv::FileStorage fsw_cam1(cam1_param, cv::FileStorage::READ);
+                cv::FileStorage fsw_cam2(cam2_param, cv::FileStorage::READ);
+                cv::Mat d2c_cam1, d2c_cam2, objInCam1, objInCam2, cam1InObj, cam2InObj;
+                fsw_cam1["D2C"] >> d2c_cam1;
+                fsw_cam2["D2C"] >> d2c_cam2;
+                fsw_cam1["ObjectInCam"] >> objInCam1;
+                fsw_cam2["ObjectInCam"] >> objInCam2;
+                fsw_cam1["CamInObject"] >> cam1InObj;
+                fsw_cam2["CamInObject"] >> cam2InObj;
+
+                // auto homoMat2Eigen = [](const cv::Mat& input, Eigen::Matrix4d& output) {
+                //     for (int i = 0; i < 4; i++) {
+                //         for (int j = 0; j < 4; j++) {
+                //             output.row(i)(j) = input.at<double>(i, j);
+                //         }
+                //     }
+                // };
+
+                Eigen::Matrix4d T_d2c_cam1, T_c2d_cam1, T_d2c_cam2, T_cam1_obj, T_obj_cam2;
+                // homoMat2Eigen(d2c_cam1, T_d2c_cam1);
+                // homoMat2Eigen(d2c_cam2, T_d2c_cam2);
+                // homoMat2Eigen(cam1InObj, T_cam1_obj);
+                // homoMat2Eigen(objInCam2, T_obj_cam2);
+
+                T_c2d_cam1 = T_d2c_cam1.inverse();
+
+                /* Transformation from depth camera 2 to depth camera 1 */
+                // Eigen::Matrix4d T_dcam2_dcam1 = T_c2d_cam1 * T_cam1_obj * T_obj_cam2 * T_d2c_cam2;
+                
+                cloud::Ptr cloud_cam1 (new cloud()), cloud_cam2 (new cloud()), output_cam2 (new cloud());
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud1_color(cloud_cam1, 255, 0, 0);
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud2_color(cloud_cam2, 0, 0, 255);
+                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> output_color(output_cam2, 0, 0, 255);
+                cv::Mat img_cam1, img_cam2;
+                viewer.addPointCloud(cloud_cam1, cloud1_color, "cam1");
+                viewer.addPointCloud(cloud_cam2, cloud2_color, "cam2");
+                viewer.addPointCloud(output_cam2, output_color, "cam2_output");
+
+                printf("Entering display loop\n");
+                lk.unlock();
+                while(key.load(std::memory_order_seq_cst) != int('q')) {
+                    getCurrent(img_cam1, img_cam2, cloud_cam1, cloud_cam2);
+                    // pcl::transformPointCloud(*cloud_cam2, *output_cam2, T_dcam2_dcam1.cast<float>());
+                    viewer.updatePointCloud(cloud_cam1, cloud1_color, "cam1");
+                    viewer.updatePointCloud(cloud_cam2, cloud2_color, "cam2");
+                    // viewer.updatePointCloud(cloud_cam1, cloud1_color, "cam1");
+                    viewer.spinOnce();
+                    key_set.store(false, std::memory_order_seq_cst);
+                    cv_keypress.notify_one();
+                }
                 break;
             }
             case int('h'): {
+                printf(" : help is pressed.\n");
                 help();
                 break;
             }

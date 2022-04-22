@@ -26,3 +26,9 @@ find_package(Eigen3 REQUIRED)
 add_executable(eigen-test eigen-test.cpp)
 target_include_directories(eigen-test PUBLIC ${EIGEN3_INCLUDE_DIRS})
 
+add_executable(thread-test thread-test.cpp)
+target_link_libraries(thread-test pthread)
+
+add_executable(rs-test rs-driver-test.cpp)
+target_link_libraries(rs-test rs_driver ${OpenCV_LIBS} ${PCL_LIBRARIES} ${Boost_LIBRARIES})
+

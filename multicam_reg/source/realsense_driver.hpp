@@ -8,6 +8,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <thread>
 
 namespace spark_cameras {
 
@@ -44,6 +45,7 @@ namespace spark_cameras {
         rs2::frame m_color_frame;
         rs2::frame m_depth_frame;
         rs2::pointcloud m_rs_pc;
+        rs2::align m_align_to{RS2_STREAM_COLOR};
     };
 
 }
