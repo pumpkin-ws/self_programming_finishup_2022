@@ -8,6 +8,8 @@ find_package(PCL 1.10 REQUIRED)
 include_directories(${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
+find_package(glog REQUIRED)
+
 add_subdirectory(source)
 
 add_executable(merge_app merge_app.cpp)
@@ -31,4 +33,8 @@ target_link_libraries(thread-test pthread)
 
 add_executable(rs-test rs-driver-test.cpp)
 target_link_libraries(rs-test rs_driver ${OpenCV_LIBS} ${PCL_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(glog-test glog-test.cpp)
+target_link_libraries(glog-test glog::glog ${Boost_LIBRARIES})
+
 

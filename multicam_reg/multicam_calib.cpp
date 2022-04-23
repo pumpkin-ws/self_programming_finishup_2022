@@ -32,7 +32,7 @@ std::string folder_name;
 int main(int argc, char** argv) {
 
     /* create folder for storing images */
-    printf("Type in folder name for calibration of intrinsics:(Press enter to confirm)\n");
+    printf("Type in folder name for image operation:(Press enter to confirm)\n");
     getline(std::cin, folder_name);
     int cam_id{1};
     printf("Type in camera id(1 - 3): (Press enter to confirm)\n");
@@ -148,6 +148,7 @@ void utils() {
                 printf("Enter new folder name for calibration:\n");
                 getline(std::cin, folder_name);
                 createDirectory(folder_name);
+                printf("Now operating in directory: %s\n", folder_name.c_str());
                 break;
             }
             /* Calibrate camera intrinsics */
@@ -162,10 +163,14 @@ void utils() {
                 }
                 /* Perform calibration */
                 std::vector<std::string> img_names = getAllFileName(folder_name, ".jpg");
+                if (img_names.size() == 0) {
+                    printf("No images ending in .jpg stored in folder %s.\n", folder_name.c_str());
+                    break;
+                }
                 // sort the image names
                 std::sort(img_names.begin(), img_names.end(), [](std::string name1, std::string name2)->bool {
-                    int idx1 = atoi(name1.substr(0, name1.find_first_of('_')).c_str());
-                    int idx2 = atoi(name2.substr(0, name2.find_first_of('_')).c_str());
+                    int idx1 = atoi(name1.substr(0, name1.find_first_of('.')).c_str());
+                    int idx2 = atoi(name2.substr(0, name2.find_first_of('.')).c_str());
                     return idx1 < idx2;
                 });
 
@@ -214,7 +219,15 @@ void utils() {
             case int('o'): {
                 // read in the camera intrinsics
                 printf("Type in folder name for capturing object pose:\n");
-                getline(std::cin, folder_name);       
+                getline(std::cin, folder_name);    
+                if (folder_name.empty()) {
+                    printf("Folder name is empty. Press o and try again.\n");
+                    break;
+                }
+                if (boost::filesystem::exists(folder_name)) {
+                    printf("Folder name does not exist. Check folder name and retry by pressing o.\n");
+                    break;
+                }
                 printf("The directory has changed to: %s\n", folder_name.c_str());
                 /* Get the image with common objects */
                 std::string object_name = folder_name + "/object.jpg";
