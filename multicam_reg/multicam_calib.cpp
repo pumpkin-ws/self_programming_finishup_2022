@@ -32,10 +32,11 @@ std::string folder_name;
 int main(int argc, char** argv) {
 
     /* create folder for storing images */
+    help();
     printf("Type in folder name for image operation:(Press enter to confirm)\n");
     getline(std::cin, folder_name);
     int cam_id{1};
-    printf("Type in camera id(1 - 3): (Press enter to confirm)\n");
+    printf("Type in camera id (1 - 3): (Press enter to confirm)\n");
     std::cin >> cam_id;
     if (cam_id > 3 || cam_id < 1) {
         printf("Invalid camera id, check label and retry\n");
@@ -224,8 +225,10 @@ void utils() {
                     printf("Folder name is empty. Press o and try again.\n");
                     break;
                 }
-                if (boost::filesystem::exists(folder_name)) {
-                    printf("Folder name does not exist. Check folder name and retry by pressing o.\n");
+                // folder_name = "./" + folder_name + "/";
+                boost::filesystem::path p_folder{folder_name};
+                if (!boost::filesystem::exists(p_folder)) {
+                    printf("Folder name \"%s\" does not exist. Check folder name and retry by pressing o.\n", folder_name.c_str());
                     break;
                 }
                 printf("The directory has changed to: %s\n", folder_name.c_str());
@@ -308,6 +311,7 @@ int keyboardScan() {
 }
 
 void help() {
+    printf("******************HELP******************\n");
     printf("Functions for different keys are: \n");
     printf("s: store the current image\n");
     printf("c: capture and display the current image\n");
@@ -315,4 +319,5 @@ void help() {
     printf("h: print help info\n");
     printf("i: calibrate the intrinsics\n");
     printf("o: calculate object in pose\n");
+    printf("******************End of Help******************\n");
 }

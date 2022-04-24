@@ -14,6 +14,8 @@
 #include "pcl/visualization/pcl_visualizer.h"
 #include "pcl/common/transforms.h"
 #include "pcl/filters/passthrough.h"
+#include "pcl/filters/statistical_outlier_removal.h"
+#include "pcl/filters/radius_outlier_removal.h"
 
 
 typedef pcl::PointCloud<pcl::PointXYZRGB> cloud;
@@ -168,51 +170,93 @@ void utils() {
                 printf("Press q to exit.\n");
                 std::string cam1_param = cam1_folder + "/CamInObject.yml";
                 std::string cam2_param = cam2_folder + "/CamInObject.yml";
+                std::string cam1_d2c = cam1_folder + "/d2c.yml";
+                std::string cam2_d2c = cam2_folder + "/d2c.yml";
+
                 cv::FileStorage fsw_cam1(cam1_param, cv::FileStorage::READ);
                 cv::FileStorage fsw_cam2(cam2_param, cv::FileStorage::READ);
+                cv::FileStorage fs_cam1_d2c(cam1_d2c, cv::FileStorage::READ);
+                cv::FileStorage fs_cam2_d2c(cam2_d2c, cv::FileStorage::READ);
                 std::cout << cam1_param << std::endl;
                 std::cout << cam2_param << std::endl;
                 std::cout << std::boolalpha << fsw_cam1.isOpened() << std::endl;
                 std::cout << std::boolalpha << fsw_cam2.isOpened() << std::endl;
                 cv::Mat d2c_cam1, d2c_cam2, objInCam1, objInCam2, cam1InObj, cam2InObj;
-                // fsw_cam1["D2C"] >> d2c_cam1;
-                // fsw_cam2["D2C"] >> d2c_cam2;
+                fs_cam1_d2c["D2C"] >> d2c_cam1;
+                fs_cam2_d2c["D2C"] >> d2c_cam2;
                 fsw_cam1["ObjectInCam"] >> objInCam1;
                 fsw_cam2["ObjectInCam"] >> objInCam2;
                 fsw_cam1["CamInObject"] >> cam1InObj;
                 fsw_cam2["CamInObject"] >> cam2InObj;
-                std::cout << "object in cam1 is " << std::endl;
-                std::cout << objInCam1 << std::endl;
-                std::cout << "object in cam2 is " << std::endl;
-                std::cout << objInCam2 << std::endl;
-
 
                 cloud::Ptr cloud_cam1 (new cloud()), cloud_cam2 (new cloud());
                 cv::Mat img_cam1, img_cam2;
 
                 getCurrent(img_cam1, img_cam2, cloud_cam1, cloud_cam2);
 
-                auto homoMat2Eigen = [](const cv::Mat& input, Eigen::Matrix4d& output) {
+                pcl::PassThrough<pcl::PointXYZRGB> ps;
+                ps.setInputCloud(cloud_cam1);
+                ps.setFilterFieldName("z");
+                ps.setFilterLimits(0, 1);
+                ps.filter(*cloud_cam1);
+
+                ps.setInputCloud(cloud_cam2);
+                ps.filter(*cloud_cam2);
+
+                // pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> sor;
+                // sor.setInputCloud(cloud_cam1);
+                // sor.setMeanK(50);
+                // sor.setStddevMulThresh(1.0);
+                // sor.filter(*cloud_cam1);
+                
+                // sor.setInputCloud(cloud_cam2);
+                // sor.filter(*cloud_cam2);
+
+                pcl::RadiusOutlierRemoval<pcl::PointXYZRGB> ror;
+                ror.setMinNeighborsInRadius(2);
+                ror.setRadiusSearch(0.05s);
+                ror.setInputCloud(cloud_cam1);
+                ror.filter(*cloud_cam1);
+
+                ror.setInputCloud(cloud_cam2);
+                ror.filter(*cloud_cam2);
+
+                auto homoMat2Eigen = [](const cv::Mat& input, Eigen::Matrix4d& output, bool is_mm) {
                     for (int i = 0; i < 4; i++) {
                         for (int j = 0; j < 4; j++) {
-                            output.row(i)(j) = input.at<double>(i, j);
+                            if (j == 3 && i != 3) {
+                                if (is_mm == true) {
+                                    output.row(i)(j) = input.at<double>(i, j) / 1000.0;
+                                } else {
+                                    output.row(i)(j) = input.at<double>(i, j);
+                                }
+                            } else {
+                                output.row(i)(j) = input.at<double>(i, j);
+                            }
                         }
                     }
                 };
 
                 Eigen::Matrix4d T_d2c_cam1, T_c2d_cam1, T_d2c_cam2, T_cam1_obj, T_obj_cam2;
-                // homoMat2Eigen(d2c_cam1, T_d2c_cam1);
-                // homoMat2Eigen(d2c_cam2, T_d2c_cam2);
-                homoMat2Eigen(cam1InObj, T_cam1_obj);
-                homoMat2Eigen(objInCam2, T_obj_cam2);
-                
-                // T_c2d_cam1 = T_d2c_cam1.inverse();
-                
-                pcl::PassThrough<pcl::PointXYZRGB> ps;
+                homoMat2Eigen(d2c_cam1, T_d2c_cam1, false);
+                homoMat2Eigen(d2c_cam2, T_d2c_cam2, false);
+                homoMat2Eigen(cam1InObj, T_cam1_obj, true);
+                homoMat2Eigen(objInCam2, T_obj_cam2, true);
+                T_c2d_cam1 = T_d2c_cam1.inverse();
+
+                std::cout << "object in cam1 is " << std::endl;
+                std::cout << T_cam1_obj << std::endl;
+                std::cout << "cam2 in object is " << std::endl;
+                std::cout << T_obj_cam2 << std::endl;
+                std::cout << "cam2 depth to color is" << std::endl;
+                std::cout << T_d2c_cam2 << std::endl;
+                std::cout << "cam0 color to depth is" << std::endl;
+                std::cout << T_c2d_cam1 << std::endl;
                 
 
                 /* Transformation from depth camera 2 to depth camera 1 */
-                Eigen::Matrix4d T_dcam2_dcam1 = T_cam1_obj * T_obj_cam2;
+                Eigen::Matrix4d T_dcam2_dcam1 = T_c2d_cam1 * T_cam1_obj.inverse() * T_obj_cam2.inverse() * T_d2c_cam2;
+                // Eigen::Matrix4d T_dcam2_dcam1 = T_cam1_obj.inverse() * T_obj_cam2.inverse();
 
                 cloud::Ptr output_cam2 (new cloud());
                 pcl::transformPointCloud(*cloud_cam2, *output_cam2, T_dcam2_dcam1.cast<float>());
@@ -225,11 +269,12 @@ void utils() {
                 viewer.addPointCloud(output_cam2, output_color, "cam2_output");
 
                 lk.unlock();
-                while(key.load(std::memory_order_seq_cst) != int('q')) {
+                while(key.load(std::memory_order_seq_cst) != int('q') && key.load(std::memory_order_seq_cst) != 27) {
                     viewer.spinOnce();
                     key_set.store(false, std::memory_order_seq_cst);
                     cv_keypress.notify_one();
                 }
+                viewer.removeAllPointClouds();
                 printf(": Exiting from display loop.\n");
                 break;
             }
@@ -258,15 +303,15 @@ void utils() {
                 };
 
                 Eigen::Matrix4d T_d2c_cam1, T_c2d_cam1, T_d2c_cam2, T_cam1_obj, T_obj_cam2;
-                homoMat2Eigen(d2c_cam1, T_d2c_cam1);
-                homoMat2Eigen(d2c_cam2, T_d2c_cam2);
+                // homoMat2Eigen(d2c_cam1, T_d2c_cam1);
+                // homoMat2Eigen(d2c_cam2, T_d2c_cam2);
                 homoMat2Eigen(cam1InObj, T_cam1_obj);
                 homoMat2Eigen(objInCam2, T_obj_cam2);
 
-                T_c2d_cam1 = T_d2c_cam1.inverse();
+                // T_c2d_cam1 = T_d2c_cam1.inverse();
 
                 /* Transformation from depth camera 2 to depth camera 1 */
-                Eigen::Matrix4d T_dcam2_dcam1 = T_c2d_cam1 * T_cam1_obj * T_obj_cam2 * T_d2c_cam2;
+                Eigen::Matrix4d T_dcam2_dcam1 = T_cam1_obj * T_obj_cam2 ;
                 
                 cloud::Ptr cloud_cam1 (new cloud()), cloud_cam2 (new cloud()), output_cam2 (new cloud());
                 pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> cloud1_color(cloud_cam1, 255, 0, 0);
