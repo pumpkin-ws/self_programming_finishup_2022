@@ -36,5 +36,8 @@ target_link_libraries(ur-test ur_rtde::rtde)
 add_executable(eigen-test2 eigen-test.cpp)
 
 add_executable(redis-test redis-test.cpp)
-target_link_libraries
+target_link_libraries(redis-test redis++ hiredis)
+
+add_executable(redis-sub redis-subscribe.cpp)
+target_link_libraries(redis-sub redis++ hiredis)
 
