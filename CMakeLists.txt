@@ -10,6 +10,8 @@ link_directories(${PROJECT_SOURCE_DIR}/lib/)
 
 add_subdirectory(multicam_reg)
 
+add_subdirectory(multirobot)
+
 add_executable(sp-finish main.cpp)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
