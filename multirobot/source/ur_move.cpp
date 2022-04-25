@@ -5,9 +5,6 @@
 #include <thread>
 #include <chrono>
 
-#include "Eigen/Core"
-#include "Eigen/Dense"
-
 using namespace ur_rtde;
 using namespace std::chrono;
 
@@ -15,13 +12,6 @@ class URMover
 {
 public:
     //constructor
-    struct JointPose {
-        double j1{0}, j2{0}, j3{0}, j4{0}, j5{0}, j6{0};
-    };
-    struct ToolPose{
-        double x{0}, y{0}, z{0};
-        double qw{0}, qx{0}, qy{0}, qz{0};
-    };
 
     ~URMover(){
         delete rtde_control;
@@ -30,48 +20,6 @@ public:
     explicit URMover(std::string _UR_IP) : UR_IP(_UR_IP)
     {
         this->rtde_control = new RTDEControlInterface(UR_IP);
-        this->rtde_receive = new RTDEReceiveInterface(UR_IP);
-    }
-
-    /**
-     * @brief Get the current joint angles, RT stands for real time
-     * The angle units are radians
-     * 
-     */
-    JointPose getRTJointPose() {
-        std::vector<double> joints = rtde_receive->getActualQ();
-        JointPose jp;
-        jp.j1 = joints[0];
-        jp.j2 = joints[1];
-        jp.j3 = joints[2];
-        jp.j4 = joints[3];
-        jp.j5 = joints[4];
-        jp.j6 = joints[5];
-        return jp;
-    }
-
-    /**
-     * @brief Get the cartesian pose of the tool pose, 
-     * 
-     * @return CartPose 
-     */
-    ToolPose getRTCartPose() {
-        std::vector<double> cart_pos = rtde_receive->getActualTCPPose();
-        ToolPose tp;
-        tp.x = cart_pos[0];
-        tp.y = cart_pos[1];
-        tp.z = cart_pos[2];
-
-        Eigen::Vector3d rvec{cart_pos[3], cart_pos[4], cart_pos[5]};
-        double theta = rvec.norm();
-        rvec.normalized();
-        Eigen::AngleAxisd aa_rvec{rvec.norm(), rvec};
-        Eigen::Quaterniond quat(aa_rvec);
-        tp.qw = quat.w();
-        tp.qx = quat.x();
-        tp.qy = quat.y();
-        tp.qz = quat.z();
-        return tp;
     }
 
 
@@ -127,7 +75,7 @@ public:
                                     ,double speed=0.25
                                     ,double acceleration=1.2)
     {
-        rtde_control->moveL(pose, speed, acceleration);
+        rtde_control->moveL(pose,speed,acceleration);
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         rtde_control->stopL(0.5);
     }
@@ -135,5 +83,4 @@ public:
 private:
     std::string UR_IP = "192.168.1.11";
     RTDEControlInterface* rtde_control;
-    RTDEReceiveInterface* rtde_receive;
 };
