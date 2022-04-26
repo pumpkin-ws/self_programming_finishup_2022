@@ -1,0 +1,54 @@
+INTRODUCTION:
+This chatbot web application can be accessed through http://42.193.222.160:8080/hsbc-chatbot/
+(public domain Tencent server)
+
+LOADING OF THE DEFAULT AVATAR CAN TAKE SOME TIME, CONSUMING MUCH BANDWITH. ONCE LOADED, THE QA SYSTEM SHOULD BE FASTER.
+
+This web application is hosted on a tomcat server.
+
+The two primary functionalities of this web app include: 1 - allowing users to create a 3D representation of themselves;
+2 - letting users chat with an AI question and answer system to learn about financial technologies.
+
+The front end is created in html, with dynamic actions of the interactive elements (buttons, text boxes) achieved
+through ajax provided by jquery. The avatar creation page uses an third party website, realplayer.me. The created
+avatar can be downloaded into local drive and saved as a .glb file. The chat page loads and displays a previously
+generated 3d avatar figure with three.js. The interactive components for chat includes a text box for inputting
+the answers, a button for sending the question to the backend servlet with post method, and a text box for
+displaying the return answer.
+
+The backend is mainly used to connect to the communication robot system provided by Huawei cloud, send questions,
+receive answer, and return unparsed result. Servlet is used to create backend post/get services.
+
+FRONT END:
+The main page of the website includes all the other pages. The interactive part of the main page layout is arranged
+horizontally with relative positioning of the div element. The left side panel allows user to switch between pages. The
+jquery ajax will give seamlessly transition when loading new pages into <div> element.
+
+The create avatar page contains an iframe loading the elements provided by realplayer.me for embedding an avatar
+creation app. An download url will be provided after user completes the decorations.
+
+The chat with avatar will load a 3D model of an default avatar. More animation can be added, but for now, the scene
+contains only a spinning model. Below the model are the QA components. With jquery's ajax functionality, ASK button
+will acquire question from the question box, and send question to cloud_service with post method. The waited
+response will be written to the answer text box.
+
+BACK END:
+
+A simple servlet is used to received post/get request from front end jquery, and query the Communication Bot System(CBS)
+hosted on Huawei cloud. To access Huawei cloud's CBS, a CBS robot will first need to be created on Huawei console.
+The preset questions and answers are typed in the xlsx file in root directory. Region, domain address, robot id, and
+a 24 hour valid token is needed to call robot services. The received answer is returned in post's response message.
+An atomic boolean is used to help ensure thread safety.
+
+As part of the authentication, the temporary token provided by Huawei Cloud will only last for 24 hours. The token
+needs to be updated so to be valid. Therefore, the access token and the time are saved on the server. Before every call
+to the cloud server, the validity of the local token will be checked. If expired, a new one will be requested and saved.
+A new token should not be generated for every service call to the cloud, for two obvious reasons: 1-tokens cost money;
+2-requesting token can be slow.
+
+TODOs:
+1 - Save Huawei cloud token to a file (done)
+2 - Check the file for the time of modification before every call to cloud service and update the token every 20 hours (done)
+3 - create_avatar.html: Automatically download avatar after creation
+4 - Servlet: Try to reinitiate a post connection if connection is lost or return result is bad
+5 - Improve cloud response unparsing (plan to unparse with alibaba's fastjson)
