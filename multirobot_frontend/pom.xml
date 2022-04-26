@@ -53,11 +53,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.huaweicloud.sdk</groupId>
-      <artifactId>huaweicloud-sdk-iam</artifactId>
-      <version>3.0.83</version>
-    </dependency>
-    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>RELEASE</version>
@@ -68,17 +63,17 @@
       <artifactId>junit-jupiter</artifactId>
       <version>RELEASE</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>2.7.1</version><!--版本号可根据实际情况填写-->
     </dependency>
 
-    <dependency>
-      <groupId>com.alibaba</groupId>
-      <artifactId>fastjson</artifactId>
-      <version>1.2.47</version>
-    </dependency>
   </dependencies>
 
   <build>
-    <finalName>hsbc-chatbot</finalName>
+    <finalName>multirobot_frontend</finalName>
     <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
       <plugins>
         <plugin>
